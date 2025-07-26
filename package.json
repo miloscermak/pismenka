@@ -1,0 +1,20 @@
+{
+  "name": "pismenka-competitive",
+  "version": "1.0.0",
+  "description": "Denní puzzle hra - Všichni řeší stejné slovo!",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "echo 'No build needed'",
+    "start": "vercel dev"
+  },
+  "keywords": ["puzzle", "game", "czech", "word-game"],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "@vercel/node": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

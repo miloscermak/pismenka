@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Písmenka_ - Denní výzva</title>
+    <meta name="description" content="Denní puzzle hra - Všichni řeší stejné slovo!">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: #333;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 5px;
+            font-weight: 300;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            font-size: 1em;
+            opacity: 0.9;
+            margin-bottom: 15px;
+        }
+
+        .daily-info {
+            background: rgba(255,255,255,0.95);
+            padding: 15px 25px;
+            border-radius: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .daily-word {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 5px;
+        }
+
+        .daily-date {
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .stat-card {
+            background: rgba(255,255,255,0.95);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .stat-label {
+            font-size: 0.8em;
+            color: #666;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .moves-indicator {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+        }
+
+        .time-indicator {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+        }
+
+        .game-container {
+            background: rgba(255,255,255,0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            margin-bottom: 20px;
+        }
+
+        .puzzle-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin: 20px auto;
+            width: 300px;
+            height: 300px;
+            position: relative;
+        }
+
+        .puzzle-tile {
+            width: 90px;
+            height: 90px;
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2em;
+            font-weight: 600;
+            color: #495057;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .puzzle-tile:not(.empty):hover {
+            background: #e9ecef;
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+            border-color: #007bff;
+        }
+
+        .puzzle-tile.empty {
+            background: rgba(255,255,255,0.1);
+            cursor: default;
+            border: 2px dashed #dee2e6;
+        }
+
+        .puzzle-tile.correct {
+            background: linear-gradient(135deg, #d4edda, #c3e6cb);
+            border-color: #28a745;
+            box-shadow: 0 0 20px rgba(40, 167, 69, 0.3);
+        }
+
+        .puzzle-tile.moving {
+            animation: moveAnimation 0.2s ease-out;
+        }
+
+        @keyframes moveAnimation {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .countdown-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4em;
+            font-weight: bold;
+            border-radius: 15px;
+            z-index: 10;
+            animation: countdownPulse 1s ease-in-out infinite;
+        }
+
+        @keyframes countdownPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .status {
+            padding: 10px 20px;
+            border-radius: 25px;
+            margin: 15px 0;
+            font-weight: 600;
+            font-size: 0.95em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .status.playing {
+            background: linear-gradient(135deg, #17a2b8, #138496);
+            color: white;
+        }
+
+        .status.solved {
+            background: linear-gradient(135deg, #28a745, #1e7e34);
+            color: white;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-size: 0.9em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,123,255,0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745, #1e7e34);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(40,167,69,0.4);
+        }
+
+        .results-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .results-modal.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .results-content {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            padding: 30px;
+            border-radius: 20px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            animation: resultsBounce 0.6s ease-out;
+        }
+
+        @keyframes resultsBounce {
+            0% { transform: scale(0.3); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .results-content h2 {
+            margin-bottom: 20px;
+            font-size: 2em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .result-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .result-stat {
+            background: rgba(255,255,255,0.2);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+
+        .result-stat-label {
+            font-size: 0.8em;
+            opacity: 0.8;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .result-stat-value {
+            font-size: 1.6em;
+            font-weight: bold;
+        }
+
+        .player-name-form {
+            margin: 20px 0;
+        }
+
+        .player-name-input {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1em;
+            text-align: center;
+            margin-bottom: 15px;
+            background: rgba(255,255,255,0.9);
+        }
+
+        .leaderboard-container {
+            background: rgba(255,255,255,0.95);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .leaderboard-container h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #333;
+            font-size: 1.5em;
+        }
+
+        .leaderboard-entry {
+            display: grid;
+            grid-template-columns: 40px 1fr auto auto;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .leaderboard-entry:last-child {
+            border-bottom: none;
+        }
+
+        .leaderboard-rank {
+            font-size: 1.2em;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .leaderboard-rank.gold { color: #ffd700; }
+        .leaderboard-rank.silver { color: #c0c0c0; }
+        .leaderboard-rank.bronze { color: #cd7f32; }
+
+        .leaderboard-name {
+            margin-left: 15px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .leaderboard-moves, .leaderboard-time {
+            font-size: 0.9em;
+            color: #6c757d;
+            margin-left: 10px;
+            font-weight: 500;
+        }
+
+        .instructions {
+            background: rgba(255,255,255,0.8);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-size: 0.85em;
+            color: #495057;
+            backdrop-filter: blur(5px);
+            max-width: 500px;
+            text-align: center;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #6c757d;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+            border: 1px solid #f5c6cb;
+        }
+
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            color: rgba(255,255,255,0.7);
+            font-size: 0.8em;
+        }
+
+        .footer a {
+            color: rgba(255,255,255,0.9);
+            text-decoration: none;
+        }
+
+        .platform-badge {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            z-index: 1000;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .puzzle-grid {
+                width: 270px;
+                height: 270px;
+            }
+            
+            .puzzle-tile {
+                width: 80px;
+                height: 80px;
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Písmenka_</h1>
+        <div class="subtitle">Denní výzva - Všichni řeší stejné slovo!</div>
+    </div>
+
+    <div id="dailyInfo" class="daily-info">
+        <div class="daily-word" id="currentWord">Načítání...</div>
+        <div class="daily-date" id="currentDate">Dnes</div>
+    </div>
+
+    <div class="stats-bar">
+        <div class="stat-card moves-indicator">
+            <div class="stat-label">Tahy</div>
+            <div id="moveCount" class="stat-value">0</div>
+        </div>
+        <div class="stat-card time-indicator">
+            <div class="stat-label">Čas</div>
+            <div id="timeDisplay" class="stat-value">00:00</div>
+        </div>
+    </div>
+
+    <div class="game-container">
+        <div id="puzzleGrid" class="puzzle-grid"></div>
+        
+        <div id="gameStatus" class="status playing">Připraveno</div>
+        
+        <div class="controls">
+            <button onclick="startNewGame()" class="btn btn-primary">🎲 Nová hra</button>
+            <button onclick="toggleLeaderboard()" class="btn btn-success">🏆 Žebříček</button>
+        </div>
+    </div>
+
+    <div id="leaderboardContainer" class="leaderboard-container" style="display: none;">
+        <h2>🏆 Dnešní žebříček</h2>
+        <div id="leaderboardList" class="loading">Načítání žebříčku...</div>
+        <div style="text-align: center; margin-top: 15px;">
+            <button onclick="toggleLeaderboard()" class="btn btn-primary">Skrýt žebříček</button>
+        </div>
+    </div>
+
+    <div class="instructions">
+        <strong>Jak hrát:</strong> Řeš dnešní slovo pohybem kostiček. Klikni na kostičku vedle prázdného místa nebo použij šipky. Všichni hráči řeší stejné slovo - ukaž, kdo je nejlepší!
+    </div>
+
+    <div class="footer">
+        Vytvořeno s ❤️ | <a href="admin.html">Admin</a>
+    </div>
+
+    <div class="platform-badge">
+        ⚡ Powered by Vercel
+    </div>
+
+    <div id="resultsModal" class="results-modal">
+        <div class="results-content">
+            <h2>🎉 Vyřešeno!</h2>
+            
+            <div class="result-stats">
+                <div class="result-stat">
+                    <div class="result-stat-label">Tahy</div>
+                    <div id="finalMoves" class="result-stat-value">0</div>
+                </div>
+                <div class="result-stat">
+                    <div class="result-stat-label">Čas</div>
+                    <div id="finalTime" class="result-stat-value">00:00</div>
+                </div>
+            </div>
+            
+            <div class="player-name-form">
+                <input type="text" id="playerName" class="player-name-input" placeholder="Tvoje jméno" maxlength="20">
+                <button onclick="submitResult()" class="btn btn-success" style="width: 100%;">Odeslat výsledek</button>
+            </div>
+            
+            <button onclick="closeResults()" class="btn btn-primary">Zkusit znovu</button>
+        </div>
+    </div>
+
+    <script>
+        class CompetitivePuzzle {
+            constructor() {
+                this.currentWord = '';
+                this.goalState = [];
+                this.currentState = [];
+                this.moveCount = 0;
+                this.startTime = null;
+                this.timerInterval = null;
+                this.isGameActive = false;
+                this.emptyPos = { row: 2, col: 2 };
+                this.apiUrl = '/api/game';
+                
+                this.loadTodaysWord();
+                this.bindEvents();
+            }
+
+            async loadTodaysWord() {
+                try {
+                    const response = await fetch(`${this.apiUrl}?action=get_current_word`);
+                    const data = await response.json();
+                    
+                    if (data.success && data.word) {
+                        this.currentWord = data.word;
+                        document.getElementById('currentWord').textContent = this.currentWord;
+                        document.getElementById('currentDate').textContent = this.formatDate(data.date);
+                        
+                        this.setupGame();
+                    } else {
+                        this.showError('Nepodařilo se načíst dnešní slovo');
+                    }
+                } catch (error) {
+                    this.showError('Chyba připojení k serveru');
+                    console.error('Error:', error);
+                }
+            }
+
+            setupGame() {
+                this.goalState = this.createGoalState(this.currentWord);
+                this.reset();
+            }
+
+            createGoalState(word) {
+                const letters = word.split('');
+                letters.push('');
+                
+                const state = [];
+                for (let i = 0; i < 3; i++) {
+                    state[i] = [];
+                    for (let j = 0; j < 3; j++) {
+                        state[i][j] = letters[i * 3 + j];
+                    }
+                }
+                return state;
+            }
+
+            reset() {
+                let attempts = 0;
+                do {
+                    this.currentState = this.generateRandomState();
+                    attempts++;
+                } while (!this.isSolvable(this.currentState) && attempts < 100);
+                
+                this.findEmptyPosition();
+                this.moveCount = 0;
+                this.isGameActive = false;
+                this.startTime = null;
+                
+                clearInterval(this.timerInterval);
+                
+                this.renderGrid();
+                this.updateDisplay();
+                this.updateGameStatus('playing');
+                this.startCountdown();
+            }
+
+            generateRandomState() {
+                const letters = this.currentWord.split('');
+                letters.push('');
+                const shuffled = this.shuffleArray([...letters]);
+                
+                const state = [];
+                for (let i = 0; i < 3; i++) {
+                    state[i] = [];
+                    for (let j = 0; j < 3; j++) {
+                        state[i][j] = shuffled[i * 3 + j];
+                    }
+                }
+                
+                return state;
+            }
+
+            shuffleArray(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+                return array;
+            }
+
+            isSolvable(state) {
+                const flat = [];
+                const letterToNumber = {};
+                let counter = 1;
+                
+                for (let i = 0; i < 3; i++) {
+                    for (let j = 0; j < 3; j++) {
+                        if (this.goalState[i][j] !== '') {
+                            letterToNumber[this.goalState[i][j]] = counter++;
+                        }
+                    }
+                }
+                
+                for (let i = 0; i < 3; i++) {
+                    for (let j = 0; j < 3; j++) {
+                        if (state[i][j] !== '') {
+                            flat.push(letterToNumber[state[i][j]]);
+                        }
+                    }
+                }
+                
+                let inversions = 0;
+                for (let i = 0; i < flat.length - 1; i++) {
+                    for (let j = i + 1; j < flat.length; j++) {
+                        if (flat[i] > flat[j]) {
+                            inversions++;
+                        }
+                    }
+                }
+                
+                return inversions % 2 === 0;
+            }
+
+            findEmptyPosition() {
+                for (let row = 0; row < 3; row++) {
+                    for (let col = 0; col < 3; col++) {
+                        if (this.currentState[row][col] === '') {
+                            this.emptyPos = { row, col };
+                            return;
+                        }
+                    }
+                }
+            }
+
+            bindEvents() {
+                document.addEventListener('keydown', (e) => {
+                    if (!this.isGameActive) return;
+                    
+                    switch(e.key) {
+                        case 'ArrowUp': this.handleKeyMove(1, 0); break;
+                        case 'ArrowDown': this.handleKeyMove(-1, 0); break;
+                        case 'ArrowLeft': this.handleKeyMove(0, 1); break;
+                        case 'ArrowRight': this.handleKeyMove(0, -1); break;
+                    }
+                });
+            }
+
+            handleKeyMove(dRow, dCol) {
+                const newRow = this.emptyPos.row + dRow;
+                const newCol = this.emptyPos.col + dCol;
+                
+                if (newRow >= 0 && newRow < 3 && newCol >= 0 && newCol < 3) {
+                    this.makeMove(newRow, newCol);
+                }
+            }
+
+            renderGrid() {
+                const grid = document.getElementById('puzzleGrid');
+                grid.innerHTML = '';
+                
+                for (let row = 0; row < 3; row++) {
+                    for (let col = 0; col < 3; col++) {
+                        const tile = document.createElement('div');
+                        tile.className = 'puzzle-tile';
+                        tile.dataset.row = row;
+                        tile.dataset.col = col;
+                        
+                        const letter = this.currentState[row][col];
+                        if (letter === '') {
+                            tile.classList.add('empty');
+                        } else {
+                            tile.textContent = letter;
+                            
+                            if (letter === this.goalState[row][col]) {
+                                tile.classList.add('correct');
+                            }
+                            
+                            tile.addEventListener('click', () => this.handleTileClick(row, col));
+                        }
+                        
+                        grid.appendChild(tile);
+                    }
+                }
+            }
+
+            handleTileClick(row, col) {
+                if (!this.isGameActive) return;
+                
+                if (this.isValidMove(row, col)) {
+                    this.makeMove(row, col);
+                }
+            }
+
+            isValidMove(row, col) {
+                const rowDiff = Math.abs(row - this.emptyPos.row);
+                const colDiff = Math.abs(col - this.emptyPos.col);
+                return (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
+            }
+
+            makeMove(row, col) {
+                if (!this.isValidMove(row, col)) return false;
+                
+                const letter = this.currentState[row][col];
+                this.currentState[row][col] = '';
+                this.currentState[this.emptyPos.row][this.emptyPos.col] = letter;
+                
+                this.emptyPos = { row, col };
+                this.moveCount++;
+                
+                this.animateMove(row, col);
+                this.updateDisplay();
+                
+                if (this.isSolved()) {
+                    this.handleVictory();
+                }
+                
+                return true;
+            }
+
+            animateMove(fromRow, fromCol) {
+                const fromTile = document.querySelector(`[data-row="${fromRow}"][data-col="${fromCol}"]`);
+                
+                if (fromTile) {
+                    fromTile.classList.add('moving');
+                    setTimeout(() => {
+                        fromTile.classList.remove('moving');
+                        this.renderGrid();
+                    }, 200);
+                }
+            }
+
+            async startCountdown() {
+                this.isGameActive = false;
+                this.updateGameStatus('playing');
+                
+                const grid = document.getElementById('puzzleGrid');
+                const overlay = document.createElement('div');
+                overlay.className = 'countdown-overlay';
+                
+                grid.style.position = 'relative';
+                grid.appendChild(overlay);
+                
+                for (let i = 3; i >= 1; i--) {
+                    overlay.textContent = i;
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+                
+                overlay.textContent = 'START!';
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                overlay.remove();
+                this.startGame();
+            }
+
+            startGame() {
+                this.isGameActive = true;
+                this.startTime = Date.now();
+                this.updateGameStatus('playing');
+                this.startTimer();
+            }
+
+            startTimer() {
+                this.timerInterval = setInterval(() => {
+                    if (this.isGameActive) {
+                        this.updateTimeDisplay();
+                    }
+                }, 1000);
+            }
+
+            updateTimeDisplay() {
+                if (!this.startTime) return;
+                
+                const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                
+                document.getElementById('timeDisplay').textContent = 
+                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+
+            updateDisplay() {
+                document.getElementById('moveCount').textContent = this.moveCount;
+                this.updateTimeDisplay();
+            }
+
+            updateGameStatus(status) {
+                const statusElement = document.getElementById('gameStatus');
+                statusElement.className = `status ${status}`;
+                
+                switch(status) {
+                    case 'playing':
+                        statusElement.textContent = 'Hra probíhá';
+                        break;
+                    case 'solved':
+                        statusElement.textContent = 'Vyřešeno!';
+                        break;
+                }
+            }
+
+            isSolved() {
+                for (let row = 0; row < 3; row++) {
+                    for (let col = 0; col < 3; col++) {
+                        if (this.currentState[row][col] !== this.goalState[row][col]) {
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            }
+
+            handleVictory() {
+                this.isGameActive = false;
+                clearInterval(this.timerInterval);
+                this.updateGameStatus('solved');
+                
+                const timeSeconds = Math.floor((Date.now() - this.startTime) / 1000);
+                
+                document.getElementById('finalMoves').textContent = this.moveCount;
+                document.getElementById('finalTime').textContent = document.getElementById('timeDisplay').textContent;
+                document.getElementById('resultsModal').classList.add('show');
+                
+                this.lastResult = {
+                    moves: this.moveCount,
+                    time: timeSeconds
+                };
+            }
+
+            async submitResult() {
+                const playerName = document.getElementById('playerName').value.trim() || 'Anonym';
+                
+                if (!this.lastResult) return;
+                
+                try {
+                    const response = await fetch(this.apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'submit_result',
+                            word: this.currentWord,
+                            moves: this.lastResult.moves,
+                            time: this.lastResult.time,
+                            player_name: playerName
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        document.getElementById('resultsModal').classList.remove('show');
+                        this.loadLeaderboard();
+                        this.showLeaderboard();
+                    } else {
+                        alert('Chyba při odesílání výsledku: ' + (data.error || 'Neznámá chyba'));
+                    }
+                } catch (error) {
+                    alert('Chyba připojení k serveru');
+                    console.error('Error:', error);
+                }
+            }
+
+            async loadLeaderboard() {
+                try {
+                    const response = await fetch(`${this.apiUrl}?action=get_leaderboard`);
+                    const data = await response.json();
+                    
+                    const container = document.getElementById('leaderboardList');
+                    
+                    if (data.success && data.leaderboard && data.leaderboard.length > 0) {
+                        container.innerHTML = data.leaderboard.map(entry => {
+                            let rankClass = '';
+                            if (entry.rank === 1) rankClass = 'gold';
+                            else if (entry.rank === 2) rankClass = 'silver';
+                            else if (entry.rank === 3) rankClass = 'bronze';
+                            
+                            return `
+                                <div class="leaderboard-entry">
+                                    <div class="leaderboard-rank ${rankClass}">${entry.rank}.</div>
+                                    <div class="leaderboard-name">${entry.player_name}</div>
+                                    <div class="leaderboard-moves">${entry.moves} tahů</div>
+                                    <div class="leaderboard-time">${this.formatTime(entry.time)}</div>
+                                </div>
+                            `;
+                        }).join('');
+                        
+                        if (data.total_players) {
+                            container.innerHTML += `<div style="text-align: center; margin-top: 15px; color: #6c757d; font-size: 0.9em;">Celkem hráčů dnes: ${data.total_players}</div>`;
+                        }
+                    } else {
+                        container.innerHTML = '<p style="text-align: center; color: #6c757d;">Zatím žádné výsledky</p>';
+                    }
+                } catch (error) {
+                    document.getElementById('leaderboardList').innerHTML = '<p style="text-align: center; color: #dc3545;">Chyba načítání žebříčku</p>';
+                    console.error('Error:', error);
+                }
+            }
+
+            showLeaderboard() {
+                document.getElementById('leaderboardContainer').style.display = 'block';
+            }
+
+            formatTime(seconds) {
+                const minutes = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }
+
+            formatDate(dateString) {
+                const date = new Date(dateString);
+                const today = new Date();
+                
+                if (date.toDateString() === today.toDateString()) {
+                    return 'Dnes';
+                }
+                
+                return date.toLocaleDateString('cs-CZ', { 
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long'
+                });
+            }
+
+            showError(message) {
+                const container = document.getElementById('dailyInfo');
+                container.innerHTML = `<div class="error">${message}</div>`;
+            }
+        }
+
+        // Global functions
+        function startNewGame() {
+            game.reset();
+        }
+
+        function toggleLeaderboard() {
+            const container = document.getElementById('leaderboardContainer');
+            const isVisible = container.style.display !== 'none';
+            
+            if (isVisible) {
+                container.style.display = 'none';
+            } else {
+                game.loadLeaderboard();
+                game.showLeaderboard();
+            }
+        }
+
+        function submitResult() {
+            game.submitResult();
+        }
+
+        function closeResults() {
+            document.getElementById('resultsModal').classList.remove('show');
+        }
+
+        // Initialize game
+        let game;
+        document.addEventListener('DOMContentLoaded', () => {
+            game = new CompetitivePuzzle();
+        });
+
+        // Handle window focus/blur for timer
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                if (game && game.timerInterval) {
+                    clearInterval(game.timerInterval);
+                }
+            } else {
+                if (game && game.isGameActive) {
+                    game.startTimer();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
