@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Písmenka_ - Admin panel</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔐</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: #333;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .admin-container {
+            background: rgba(255,255,255,0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            max-width: 800px;
+            width: 100%;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .admin-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+        }
+
+        .admin-section h2 {
+            margin-bottom: 15px;
+            color: #495057;
+            font-size: 1.3em;
+            font-weight: 600;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 1em;
+            transition: border-color 0.2s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(0,123,255,0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(220,53,69,0.4);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stats-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .stats-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 5px;
+        }
+
+        .stats-label {
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+
+        .leaderboard-preview {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .leaderboard-entry {
+            display: grid;
+            grid-template-columns: 30px 1fr auto auto;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .leaderboard-entry:last-child {
+            border-bottom: none;
+        }
+
+        .rank {
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .player-name {
+            margin-left: 10px;
+            font-weight: 500;
+        }
+
+        .moves, .time {
+            font-size: 0.9em;
+            color: #6c757d;
+            margin-left: 10px;
+        }
+
+        .message {
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-weight: 500;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .login-form {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .back-to-game {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.9);
+            padding: 10px 15px;
+            border-radius: 25px;
+            text-decoration: none;
+            color: #333;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .back-to-game:hover {
+            background: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .platform-badge {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            z-index: 1000;
+        }
+
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .leaderboard-entry {
+                grid-template-columns: 30px 1fr auto;
+                font-size: 0.9em;
+            }
+            
+            .time {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-to-game">← Zpět ke hře</a>
+
+    <div class="header">
+        <h1>🔐 Admin Panel</h1>
+        <p>Správa hry Písmenka_</p>
+    </div>
+
+    <!-- Login Form -->
+    <div id="loginForm" class="admin-container">
+        <div class="login-form">
+            <h2 style="text-align: center; margin-bottom: 20px;">Přihlášení</h2>
+            <div class="form-group">
+                <label class="form-label">Admin heslo:</label>
+                <input type="password" id="adminPassword" class="form-input" placeholder="Zadej admin heslo">
+            </div>
+            <button onclick="login()" class="btn btn-primary" style="width: 100%;">Přihlásit se</button>
+            <div id="loginMessage"></div>
+        </div>
+    </div>
+
+    <!-- Admin Panel -->
+    <div id="adminPanel" class="admin-container hidden">
+        
+        <!-- Statistiky -->
+        <div class="admin-section">
+            <h2>📊 Statistiky</h2>
+            <div class="stats-grid">
+                <div class="stats-card">
+                    <div id="totalPlayers" class="stats-value">-</div>
+                    <div class="stats-label">Celkem hráčů</div>
+                </div>
+                <div class="stats-card">
+                    <div id="totalGames" class="stats-value">-</div>
+                    <div class="stats-label">Celkem her</div>
+                </div>
+                <div class="stats-card">
+                    <div id="todayGames" class="stats-value">-</div>
+                    <div class="stats-label">Dnes her</div>
+                </div>
+            </div>
+            <button onclick="loadStats()" class="btn btn-primary">Obnovit statistiky</button>
+        </div>
+
+        <!-- Nastavení nového slova -->
+        <div class="admin-section">
+            <h2>🎯 Nastavit nové slovo</h2>
+            <div class="form-group">
+                <label class="form-label">Nové slovo (8 písmen):</label>
+                <input type="text" id="newWord" class="form-input" placeholder="např. KRÁLOVNA" maxlength="8" style="text-transform: uppercase;">
+            </div>
+            <button onclick="setNewWord()" class="btn btn-danger">🔄 Resetovat hru s novým slovem</button>
+            <div id="wordMessage"></div>
+            <p style="margin-top: 10px; font-size: 0.9em; color: #6c757d;">
+                ⚠️ Pozor: Tato akce archivuje předchozí den a resetuje aktuální žebříček!
+            </p>
+        </div>
+
+        <!-- Aktuální žebříček -->
+        <div class="admin-section">
+            <h2>🏆 Dnešní žebříček</h2>
+            <button onclick="loadLeaderboard()" class="btn btn-primary">Obnovit žebříček</button>
+            <div id="currentLeaderboard" class="leaderboard-preview">
+                <p style="text-align: center; color: #6c757d;">Klikni na "Obnovit žebříček" pro načtení dat</p>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="platform-badge">
+        ⚡ Powered by Vercel
+    </div>
+
+    <script>
+        let adminPassword = '';
+
+        function login() {
+            adminPassword = document.getElementById('adminPassword').value;
+            
+            if (!adminPassword) {
+                showMessage('loginMessage', 'Zadej heslo', 'error');
+                return;
+            }
+
+            // Test přihlášení načtením statistik
+            fetch('/api/game', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'admin_get_stats',
+                    admin_password: adminPassword
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('loginForm').classList.add('hidden');
+                    document.getElementById('adminPanel').classList.remove('hidden');
+                    loadStats();
+                } else {
+                    showMessage('loginMessage', data.error || 'Neplatné heslo', 'error');
+                }
+            })
+            .catch(error => {
+                showMessage('loginMessage', 'Chyba připojení: ' + error.message, 'error');
+            });
+        }
+
+        function loadStats() {
+            fetch('/api/game', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'admin_get_stats',
+                    admin_password: adminPassword
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('totalPlayers').textContent = data.total_players;
+                    document.getElementById('totalGames').textContent = data.total_games;
+                    document.getElementById('todayGames').textContent = data.today_games;
+                }
+            })
+            .catch(error => console.error('Chyba načítání statistik:', error));
+        }
+
+        function setNewWord() {
+            const word = document.getElementById('newWord').value.trim().toUpperCase();
+            
+            if (!word) {
+                showMessage('wordMessage', 'Zadej slovo', 'error');
+                return;
+            }
+            
+            if (word.length !== 8) {
+                showMessage('wordMessage', 'Slovo musí mít přesně 8 písmen', 'error');
+                return;
+            }
+
+            if (!confirm(`Opravdu chceš nastavit nové slovo "${word}"? Tato akce resetuje současný žebříček!`)) {
+                return;
+            }
+
+            fetch('/api/game', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'admin_set_word',
+                    admin_password: adminPassword,
+                    word: word
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage('wordMessage', data.message, 'success');
+                    document.getElementById('newWord').value = '';
+                    loadStats();
+                    loadLeaderboard();
+                } else {
+                    showMessage('wordMessage', data.error || 'Chyba při nastavování slova', 'error');
+                }
+            })
+            .catch(error => {
+                showMessage('wordMessage', 'Chyba připojení: ' + error.message, 'error');
+            });
+        }
+
+        function loadLeaderboard() {
+            fetch('/api/game?action=get_leaderboard')
+            .then(response => response.json())
+            .then(data => {
+                const container = document.getElementById('currentLeaderboard');
+                
+                if (data.success && data.leaderboard && data.leaderboard.length > 0) {
+                    container.innerHTML = data.leaderboard.map(entry => `
+                        <div class="leaderboard-entry">
+                            <div class="rank">${entry.rank}.</div>
+                            <div class="player-name">${entry.player_name}</div>
+                            <div class="moves">${entry.moves} tahů</div>
+                            <div class="time">${formatTime(entry.time)}</div>
+                        </div>
+                    `).join('');
+                    
+                    if (data.total_players) {
+                        container.innerHTML += `<div style="text-align: center; margin-top: 15px; color: #6c757d; font-size: 0.9em;">Celkem hráčů dnes: ${data.total_players}</div>`;
+                    }
+                } else {
+                    container.innerHTML = '<p style="text-align: center; color: #6c757d;">Zatím žádné výsledky pro dnešek</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Chyba načítání žebříčku:', error);
+            });
+        }
+
+        function showMessage(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="message ${type}">${message}</div>`;
+            setTimeout(() => {
+                element.innerHTML = '';
+            }, 5000);
+        }
+
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // Enter key support for login
+        document.getElementById('adminPassword').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                login();
+            }
+        });
+
+        // Enter key support for new word
+        document.getElementById('newWord').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                setNewWord();
+            }
+        });
+    </script>
+</body>
+</html>
