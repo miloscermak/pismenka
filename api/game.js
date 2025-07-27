@@ -147,8 +147,26 @@ async function submitResult(req, res, today) {
   
   // Kontrola aktuálního slova
   const currentGame = gameData.currentGame;
-  if (!currentGame || currentGame.date !== today || currentGame.word !== word) {
-    return res.status(400).json({ error: 'Neplatné slovo' });
+  console.log('Submit result debug:', {
+    submittedWord: word,
+    currentGame: currentGame,
+    today: today
+  });
+  
+  // Pokud není current game, použij denní slovo
+  if (!currentGame || currentGame.date !== today) {
+    const dailyWord = getDailyWord(today);
+    if (word !== dailyWord) {
+      return res.status(400).json({ 
+        error: 'Neplatné slovo',
+        debug: { submitted: word, expected: dailyWord, date: today }
+      });
+    }
+  } else if (currentGame.word !== word) {
+    return res.status(400).json({ 
+      error: 'Neplatné slovo',
+      debug: { submitted: word, expected: currentGame.word, date: today }
+    });
   }
   
   // Anti-spam: IP adresa
