@@ -3,13 +3,14 @@
 
 const ADMIN_PASSWORD = 'PismenkaAdmin2024!';
 
-// Simulace databáze pomocí objektů (pro demo)
-// V produkci by se použila Upstash Redis nebo jiná DB
-let gameData = {
+// Globální persistent storage pro Vercel
+// Poznámka: V produkci použij Upstash Redis nebo database
+globalThis.gameData = globalThis.gameData || {
   currentGame: null,
   results: [],
   archive: []
 };
+const gameData = globalThis.gameData;
 
 // Slovník českých slov
 const WORDS = [
