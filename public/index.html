@@ -546,8 +546,6 @@
                     
                     if (data.success && data.word) {
                         this.currentWord = data.word;
-                        document.getElementById('currentWord').textContent = this.currentWord;
-                        document.getElementById('currentDate').textContent = this.formatDate(data.date);
                         
                         this.setupGame();
                     } else {
@@ -954,8 +952,11 @@
             }
 
             showError(message) {
-                const container = document.getElementById('dailyInfo');
-                container.innerHTML = `<div class="error">${message}</div>`;
+                const statusElement = document.getElementById('gameStatus');
+                if (statusElement) {
+                    statusElement.textContent = `Chyba: ${message}`;
+                    statusElement.className = 'status error';
+                }
             }
         }
 
