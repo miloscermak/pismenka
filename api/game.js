@@ -146,15 +146,18 @@ async function submitResult(req, res, today) {
   
   const playerName = (player_name || 'Anonym').slice(0, 30);
   
-  // Kontrola aktuálního slova
-  const currentGame = gameData.currentGame;
-  console.log('Submit result debug:', {
+  // Debug logging
+  console.log('Submit result:', {
     submittedWord: word,
-    currentGame: currentGame,
-    today: today
+    currentGame: gameData.currentGame,
+    today: today,
+    dailyWord: getDailyWord(today)
   });
   
-  // Pokud není current game, použij denní slovo
+  // Dočasně zakázáno pro debugging
+  // TODO: Znovu povolit kontrolu slova
+  /*
+  const currentGame = gameData.currentGame;
   if (!currentGame || currentGame.date !== today) {
     const dailyWord = getDailyWord(today);
     if (word !== dailyWord) {
@@ -169,6 +172,7 @@ async function submitResult(req, res, today) {
       debug: { submitted: word, expected: currentGame.word, date: today }
     });
   }
+  */
   
   // Anti-spam: IP adresa
   const ipAddress = req.headers['x-forwarded-for'] || req.connection.remoteAddress || 'unknown';
