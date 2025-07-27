@@ -12,7 +12,8 @@
   "author": "Your Name",
   "license": "MIT",
   "dependencies": {
-    "@vercel/node": "^3.0.0"
+    "@vercel/node": "^3.0.0",
+    "@upstash/redis": "^1.25.0"
   },
   "engines": {
     "node": ">=18.0.0"

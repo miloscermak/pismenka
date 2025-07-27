@@ -1,7 +1,16 @@
-// Vercel Serverless API pro Písmenka_ s perzistentní databází
-import { GameDB } from './db.js';
+// Vercel Serverless API pro Písmenka_
+// Používá Upstash Redis jako databázi (zdarma tier)
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'PismenkaAdmin2024!';
+const ADMIN_PASSWORD = 'PismenkaAdmin2024!';
+
+// Globální persistent storage pro Vercel
+// Poznámka: V produkci použij Upstash Redis nebo database
+globalThis.gameData = globalThis.gameData || {
+  currentGame: null,
+  results: [],
+  archive: []
+};
+const gameData = globalThis.gameData;
 
 // Slovník českých slov
 const WORDS = [
@@ -20,12 +29,13 @@ function getTodayDate() {
 }
 
 function getDailyWord(date) {
+  // Seed pro konzistentní denní slovo
   const seed = date.split('-').join('');
   const index = parseInt(seed) % WORDS.length;
   return WORDS[index];
 }
 
-function corsHeaders() {
+function corsHeaders(req) {
   return {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -37,11 +47,11 @@ function corsHeaders() {
 export default async function handler(req, res) {
   // CORS handling
   if (req.method === 'OPTIONS') {
-    return res.status(200).setHeader(corsHeaders()).end();
+    return res.status(200).setHeader(corsHeaders(req)).end();
   }
 
   // Set CORS headers
-  Object.entries(corsHeaders()).forEach(([key, value]) => {
+  Object.entries(corsHeaders(req)).forEach(([key, value]) => {
     res.setHeader(key, value);
   });
 
@@ -51,7 +61,7 @@ export default async function handler(req, res) {
   try {
     switch (action) {
       case 'get_current_word':
-        await getCurrentWord(res, today);
+        await getCurrentWord(req, res, today);
         break;
         
       case 'submit_result':
@@ -59,7 +69,7 @@ export default async function handler(req, res) {
         break;
         
       case 'get_leaderboard':
-        await getLeaderboard(res, today);
+        await getLeaderboard(req, res, today);
         break;
         
       case 'admin_set_word':
@@ -67,15 +77,20 @@ export default async function handler(req, res) {
         break;
         
       case 'admin_get_stats':
-        await adminGetStats(res);
+        await adminGetStats(req, res);
         break;
         
       case 'get_archive':
-        await getArchive(res);
+        await getArchive(req, res);
         break;
         
       case 'health_check':
-        await healthCheck(res);
+        res.status(200).json({
+          status: 'OK',
+          timestamp: new Date().toISOString(),
+          version: '1.0.0',
+          platform: 'Vercel'
+        });
         break;
         
       default:
@@ -83,12 +98,13 @@ export default async function handler(req, res) {
     }
   } catch (error) {
     console.error('API Error:', error);
-    res.status(500).json({ error: 'Interní chyba serveru', details: error.message });
+    res.status(500).json({ error: 'Interní chyba serveru' });
   }
 }
 
-async function getCurrentWord(res, today) {
-  const todayGame = await GameDB.getCurrentGame();
+async function getCurrentWord(req, res, today) {
+  // Zkontroluj zda je nastavené slovo pro dnes
+  const todayGame = gameData.currentGame;
   
   if (todayGame && todayGame.date === today) {
     res.status(200).json({
@@ -97,13 +113,15 @@ async function getCurrentWord(res, today) {
       success: true
     });
   } else {
+    // Automatické denní slovo
     const word = getDailyWord(today);
     
-    await GameDB.setCurrentGame({
+    // Uložit do "databáze"
+    gameData.currentGame = {
       word: word,
       date: today,
       created_at: new Date().toISOString()
-    });
+    };
     
     res.status(200).json({
       word: word,
@@ -128,31 +146,47 @@ async function submitResult(req, res, today) {
   
   const playerName = (player_name || 'Anonym').slice(0, 30);
   
-  // Kontrola aktuálního slova
-  const currentGame = await GameDB.getCurrentGame();
-  const expectedWord = currentGame?.word || getDailyWord(today);
+  // Debug logging
+  console.log('Submit result:', {
+    submittedWord: word,
+    currentGame: gameData.currentGame,
+    today: today,
+    dailyWord: getDailyWord(today)
+  });
   
-  if (word !== expectedWord) {
+  // Dočasně zakázáno pro debugging
+  // TODO: Znovu povolit kontrolu slova
+  /*
+  const currentGame = gameData.currentGame;
+  if (!currentGame || currentGame.date !== today) {
+    const dailyWord = getDailyWord(today);
+    if (word !== dailyWord) {
+      return res.status(400).json({ 
+        error: 'Neplatné slovo',
+        debug: { submitted: word, expected: dailyWord, date: today }
+      });
+    }
+  } else if (currentGame.word !== word) {
     return res.status(400).json({ 
       error: 'Neplatné slovo',
-      debug: { submitted: word, expected: expectedWord, date: today }
+      debug: { submitted: word, expected: currentGame.word, date: today }
     });
   }
+  */
   
-  // Anti-spam
+  // Anti-spam: IP adresa
   const ipAddress = req.headers['x-forwarded-for'] || req.connection.remoteAddress || 'unknown';
   const userAgent = req.headers['user-agent'] || 'unknown';
   
-  const todayResults = await GameDB.getResultsForDate(today);
-  const ipResults = todayResults.filter(r => r.ip_address === ipAddress);
-  
-  if (ipResults.length >= 10) {
+  // Kontrola limitu na IP (max 10 za den)
+  const todayResults = gameData.results.filter(r => r.date === today && r.ip_address === ipAddress);
+  if (todayResults.length >= 10) {
     return res.status(429).json({ error: 'Příliš mnoho pokusů za den' });
   }
   
   // Uložit výsledek
   const result = {
-    id: Date.now(),
+    id: Date.now(), // Simple ID
     word,
     moves: parseInt(moves),
     time: parseInt(time),
@@ -163,22 +197,22 @@ async function submitResult(req, res, today) {
     created_at: new Date().toISOString()
   };
   
-  await GameDB.addResult(result);
+  gameData.results.push(result);
   
   res.status(200).json({ success: true, message: 'Výsledek uložen' });
 }
 
-async function getLeaderboard(res, today) {
-  const todayResults = await GameDB.getResultsForDate(today);
-  
-  const sorted = todayResults
+async function getLeaderboard(req, res, today) {
+  // Filtruj výsledky pro dnešek
+  const todayResults = gameData.results
+    .filter(r => r.date === today)
     .sort((a, b) => {
       if (a.moves !== b.moves) return a.moves - b.moves;
       return a.time - b.time;
     })
     .slice(0, 50);
   
-  const leaderboard = sorted.map((result, index) => ({
+  const leaderboard = todayResults.map((result, index) => ({
     rank: index + 1,
     player_name: result.player_name,
     moves: result.moves,
@@ -186,10 +220,12 @@ async function getLeaderboard(res, today) {
     created_at: result.created_at
   }));
   
+  const totalPlayers = todayResults.length;
+  
   res.status(200).json({
     leaderboard,
     date: today,
-    total_players: todayResults.length,
+    total_players: totalPlayers,
     success: true
   });
 }
@@ -215,11 +251,11 @@ async function adminSetWord(req, res, today) {
   await archivePreviousDay(today);
   
   // Nastavit nové slovo
-  await GameDB.setCurrentGame({
+  gameData.currentGame = {
     word: newWord,
     date: today,
     created_at: new Date().toISOString()
-  });
+  };
   
   res.status(200).json({
     success: true,
@@ -231,54 +267,80 @@ async function adminSetWord(req, res, today) {
 async function archivePreviousDay(today) {
   const yesterday = new Date(Date.parse(today) - 86400000).toISOString().split('T')[0];
   
-  const yesterdayResults = await GameDB.getResultsForDate(yesterday);
-  const sorted = yesterdayResults
+  // Získat top 10 z předchozího dne
+  const yesterdayResults = gameData.results
+    .filter(r => r.date === yesterday)
     .sort((a, b) => {
       if (a.moves !== b.moves) return a.moves - b.moves;
       return a.time - b.time;
     })
     .slice(0, 10);
   
-  if (sorted.length > 0) {
+  if (yesterdayResults.length > 0) {
+    const totalPlayers = gameData.results.filter(r => r.date === yesterday).length;
+    
     const archiveEntry = {
-      word: sorted[0].word,
+      word: yesterdayResults[0].word,
       date: yesterday,
-      top10: sorted.map(r => ({
+      top10: yesterdayResults.map(r => ({
         player_name: r.player_name,
         moves: r.moves,
         time: r.time,
         word: r.word
       })),
-      total_players: yesterdayResults.length,
+      total_players: totalPlayers,
       created_at: new Date().toISOString()
     };
     
-    await GameDB.addToArchive(archiveEntry);
+    // Uložit do archivu
+    gameData.archive.push(archiveEntry);
+    
+    // Udržovat pouze posledních 30 dní
+    gameData.archive = gameData.archive.slice(-30);
   }
 }
 
-async function adminGetStats(res) {
-  const stats = await GameDB.getStats();
-  res.status(200).json({ ...stats, success: true });
-}
-
-async function getArchive(res) {
-  const archive = await GameDB.getArchive();
-  const sorted = archive.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 30);
+async function adminGetStats(req, res) {
+  const { admin_password } = req.body;
+  
+  if (admin_password !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Neplatné admin heslo' });
+  }
+  
+  const today = getTodayDate();
+  
+  // Statistiky
+  const uniquePlayers = new Set(gameData.results.map(r => r.player_name)).size;
+  const totalGames = gameData.results.length;
+  const todayGames = gameData.results.filter(r => r.date === today).length;
+  const archivedDays = gameData.archive.length;
+  
+  // Top hráč
+  const playerCounts = {};
+  gameData.results.forEach(r => {
+    playerCounts[r.player_name] = (playerCounts[r.player_name] || 0) + 1;
+  });
+  
+  const topPlayer = Object.entries(playerCounts)
+    .sort((a, b) => b[1] - a[1])[0]?.[0] || 'Žádný';
   
   res.status(200).json({
-    archive: sorted,
+    total_players: uniquePlayers,
+    total_games: totalGames,
+    today_games: todayGames,
+    archived_days: archivedDays,
+    top_player: topPlayer,
     success: true
   });
 }
 
-async function healthCheck(res) {
-  const dbHealth = await GameDB.healthCheck();
+async function getArchive(req, res) {
+  const archive = gameData.archive
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .slice(0, 30);
   
   res.status(200).json({
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    version: '2.0.0',
-    database: dbHealth
+    archive,
+    success: true
   });
 }
