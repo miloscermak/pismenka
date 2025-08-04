@@ -176,7 +176,7 @@ async function getLeaderboard(res, today) {
       if (a.moves !== b.moves) return a.moves - b.moves;
       return a.time - b.time;
     })
-    .slice(0, 50);
+    .slice(0, 10); // Zobrazit pouze top 10 v žebříčku
   
   const leaderboard = sorted.map((result, index) => ({
     rank: index + 1,
@@ -189,7 +189,7 @@ async function getLeaderboard(res, today) {
   res.status(200).json({
     leaderboard,
     date: today,
-    total_players: todayResults.length,
+    total_players: todayResults.length, // Celkový počet hráčů (všech výsledků)
     success: true
   });
 }
