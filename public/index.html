@@ -859,9 +859,13 @@
 
             async submitResult() {
                 const playerName = document.getElementById('playerName').value.trim() || 'Anonym';
-                
-                if (!this.lastResult) return;
-                
+
+                if (!this.lastResult || this.submitting) return;
+                this.submitting = true;
+
+                const btn = document.querySelector('#resultsModal .btn-success');
+                if (btn) btn.disabled = true;
+
                 try {
                     const response = await fetch(this.apiUrl, {
                         method: 'POST',
@@ -874,10 +878,11 @@
                             player_name: playerName
                         })
                     });
-                    
+
                     const data = await response.json();
-                    
+
                     if (data.success) {
+                        this.lastResult = null;
                         document.getElementById('resultsModal').classList.remove('show');
                         this.loadLeaderboard();
                         this.showLeaderboard();
@@ -887,6 +892,9 @@
                 } catch (error) {
                     alert('Chyba připojení k serveru');
                     console.error('Error:', error);
+                } finally {
+                    this.submitting = false;
+                    if (btn) btn.disabled = false;
                 }
             }
 
@@ -962,6 +970,11 @@
 
         // Global functions
         function startNewGame() {
+            // Ochrana proti volání bez načteného slova
+            if (!game.currentWord) {
+                game.loadTodaysWord();
+                return;
+            }
             game.reset();
         }
 

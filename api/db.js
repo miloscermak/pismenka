@@ -12,6 +12,7 @@ try {
     redis = new Redis({
       url: process.env.UPSTASH_REDIS_REST_URL,
       token: process.env.UPSTASH_REDIS_REST_TOKEN,
+      automaticDeserialization: true,
     });
     useRedis = true;
     console.log('🔗 Using Upstash Redis for persistence');
@@ -20,6 +21,19 @@ try {
   }
 } catch (error) {
   console.log('⚠️ Redis initialization failed, using in-memory storage:', error.message);
+}
+
+// Helper: Redis operace s timeoutem (5s), při selhání vrátí fallback
+async function withTimeout(promise, fallback, timeoutMs = 5000) {
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Redis timeout')), timeoutMs))
+    ]);
+  } catch (error) {
+    console.error('Redis operation failed:', error.message);
+    return fallback;
+  }
 }
 
 // Fallback in-memory storage
@@ -33,27 +47,16 @@ export class GameDB {
   // Current game methods
   static async getCurrentGame() {
     if (useRedis) {
-      try {
-        const game = await redis.get('current_game');
-        return game;
-      } catch (error) {
-        console.error('Redis getCurrentGame error:', error);
-        return memoryStore.currentGame;
-      }
+      return await withTimeout(redis.get('current_game'), memoryStore.currentGame);
     }
     return memoryStore.currentGame;
   }
 
   static async setCurrentGame(gameData) {
     if (useRedis) {
-      try {
-        await redis.set('current_game', gameData);
-        return true;
-      } catch (error) {
-        console.error('Redis setCurrentGame error:', error);
-        memoryStore.currentGame = gameData;
-        return false;
-      }
+      const ok = await withTimeout(redis.set('current_game', gameData), false);
+      if (!ok) memoryStore.currentGame = gameData;
+      return !!ok;
     }
     memoryStore.currentGame = gameData;
     return true;
@@ -62,35 +65,25 @@ export class GameDB {
   // Results methods
   static async getResults() {
     if (useRedis) {
-      try {
-        const results = await redis.get('results') || [];
-        return Array.isArray(results) ? results : [];
-      } catch (error) {
-        console.error('Redis getResults error:', error);
-        return memoryStore.results;
-      }
+      const results = await withTimeout(redis.get('results'), memoryStore.results);
+      return Array.isArray(results) ? results : [];
     }
     return memoryStore.results;
   }
 
   static async addResult(result) {
     if (useRedis) {
-      try {
-        const results = await this.getResults();
-        results.push(result);
-        
-        // Keep only last 1000 results to save space
-        if (results.length > 1000) {
-          results.splice(0, results.length - 1000);
-        }
-        
-        await redis.set('results', results);
-        return true;
-      } catch (error) {
-        console.error('Redis addResult error:', error);
-        memoryStore.results.push(result);
-        return false;
+      const results = await this.getResults();
+      results.push(result);
+
+      // Ponechat jen posledních 1000 výsledků
+      if (results.length > 1000) {
+        results.splice(0, results.length - 1000);
       }
+
+      const ok = await withTimeout(redis.set('results', results), false);
+      if (!ok) memoryStore.results.push(result);
+      return !!ok;
     }
     memoryStore.results.push(result);
     return true;
@@ -104,35 +97,25 @@ export class GameDB {
   // Archive methods
   static async getArchive() {
     if (useRedis) {
-      try {
-        const archive = await redis.get('archive') || [];
-        return Array.isArray(archive) ? archive : [];
-      } catch (error) {
-        console.error('Redis getArchive error:', error);
-        return memoryStore.archive;
-      }
+      const archive = await withTimeout(redis.get('archive'), memoryStore.archive);
+      return Array.isArray(archive) ? archive : [];
     }
     return memoryStore.archive;
   }
 
   static async addToArchive(archiveEntry) {
     if (useRedis) {
-      try {
-        const archive = await this.getArchive();
-        archive.push(archiveEntry);
-        
-        // Keep only last 30 days
-        if (archive.length > 30) {
-          archive.splice(0, archive.length - 30);
-        }
-        
-        await redis.set('archive', archive);
-        return true;
-      } catch (error) {
-        console.error('Redis addToArchive error:', error);
-        memoryStore.archive.push(archiveEntry);
-        return false;
+      const archive = await this.getArchive();
+      archive.push(archiveEntry);
+
+      // Ponechat jen posledních 30 dnů
+      if (archive.length > 30) {
+        archive.splice(0, archive.length - 30);
       }
+
+      const ok = await withTimeout(redis.set('archive', archive), false);
+      if (!ok) memoryStore.archive.push(archiveEntry);
+      return !!ok;
     }
     memoryStore.archive.push(archiveEntry);
     return true;
