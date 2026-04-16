@@ -145,39 +145,67 @@ async function submitResult(req, res, today) {
   
   const todayResults = await GameDB.getResultsForDate(today);
   const ipResults = todayResults.filter(r => r.ip_address === ipAddress);
-  
+
   if (ipResults.length >= 10) {
     return res.status(429).json({ error: 'Příliš mnoho pokusů za den' });
   }
-  
+
+  const movesInt = parseInt(moves);
+  const timeInt = parseInt(time);
+
+  // Deduplikace: stejný výsledek od stejného hráče v posledních 30s = duplikát
+  const now = Date.now();
+  const duplicate = todayResults.find(r =>
+    r.player_name === playerName &&
+    r.moves === movesInt &&
+    r.time === timeInt &&
+    r.ip_address === ipAddress &&
+    (now - new Date(r.created_at).getTime()) < 30000
+  );
+
+  if (duplicate) {
+    return res.status(200).json({ success: true, message: 'Výsledek již uložen', deduplicated: true });
+  }
+
   // Uložit výsledek
   const result = {
-    id: Date.now(),
+    id: now,
     word,
-    moves: parseInt(moves),
-    time: parseInt(time),
+    moves: movesInt,
+    time: timeInt,
     player_name: playerName,
     date: today,
     ip_address: ipAddress,
     user_agent: userAgent,
     created_at: new Date().toISOString()
   };
-  
+
   await GameDB.addResult(result);
-  
+
   res.status(200).json({ success: true, message: 'Výsledek uložen' });
 }
 
 async function getLeaderboard(res, today) {
   const todayResults = await GameDB.getResultsForDate(today);
-  
-  const sorted = todayResults
+
+  // Deduplikace: stejné jméno+tahy+čas v rámci 30s počítáme jako jeden záznam
+  const seen = new Map();
+  for (const r of todayResults) {
+    const key = `${r.player_name}|${r.moves}|${r.time}`;
+    const existing = seen.get(key);
+    if (!existing || new Date(r.created_at) < new Date(existing.created_at)) {
+      seen.set(key, r);
+    }
+  }
+  const deduped = Array.from(seen.values());
+
+  const sorted = deduped
     .sort((a, b) => {
       if (a.moves !== b.moves) return a.moves - b.moves;
       return a.time - b.time;
     })
     .slice(0, 10); // Zobrazit pouze top 10 v žebříčku
-  
+
   const leaderboard = sorted.map((result, index) => ({
     rank: index + 1,
     player_name: result.player_name,
@@ -185,11 +213,11 @@ async function getLeaderboard(res, today) {
     time: result.time,
     created_at: result.created_at
   }));
-  
+
   res.status(200).json({
     leaderboard,
     date: today,
-    total_players: todayResults.length, // Celkový počet hráčů (všech výsledků)
+    total_players: deduped.length,
     success: true
   });
 }
