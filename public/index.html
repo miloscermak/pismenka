@@ -105,6 +105,7 @@
             width: 300px;
             height: 300px;
             position: relative;
+            overflow: visible;
         }
 
         .puzzle-tile {
@@ -123,7 +124,6 @@
             transition: all 0.2s ease;
             user-select: none;
             position: relative;
-            overflow: hidden;
         }
 
         .puzzle-tile:not(.empty):hover {
@@ -709,8 +709,9 @@
                             }
                             
                             tile.addEventListener('click', () => this.handleTileClick(row, col));
+                            this.setupTouchDrag(tile, row, col);
                         }
-                        
+
                         grid.appendChild(tile);
                     }
                 }
@@ -718,10 +719,83 @@
 
             handleTileClick(row, col) {
                 if (!this.isGameActive) return;
-                
+
                 if (this.isValidMove(row, col)) {
                     this.makeMove(row, col);
                 }
+            }
+
+            // Přetahování dlaždic prstem na mobilu
+            setupTouchDrag(tile, row, col) {
+                const TILE_SIZE = 90;   // musí odpovídat CSS
+                const THRESHOLD = 25;   // minimální vzdálenost pro uznání tahu
+
+                let startX = 0, startY = 0, dragging = false;
+
+                tile.addEventListener('touchstart', (e) => {
+                    if (!this.isGameActive) return;
+                    if (!this.isValidMove(row, col)) return;
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                    dragging = true;
+                    tile.style.transition = 'none';
+                    tile.style.zIndex = '20';
+                    e.preventDefault();
+                }, { passive: false });
+
+                tile.addEventListener('touchmove', (e) => {
+                    if (!dragging) return;
+                    e.preventDefault();
+
+                    let dx = e.touches[0].clientX - startX;
+                    let dy = e.touches[0].clientY - startY;
+
+                    // Povolený směr = kam leží mezera od dlaždice
+                    const dirX = this.emptyPos.col - col; // -1, 0 nebo 1
+                    const dirY = this.emptyPos.row - row;
+
+                    if (dirX !== 0) {
+                        // pohyb jen horizontálně, jen správným směrem
+                        dy = 0;
+                        if (Math.sign(dx) !== Math.sign(dirX)) dx = 0;
+                        dx = Math.max(0, Math.min(Math.abs(dx), TILE_SIZE)) * Math.sign(dirX);
+                    } else if (dirY !== 0) {
+                        // pohyb jen vertikálně, jen správným směrem
+                        dx = 0;
+                        if (Math.sign(dy) !== Math.sign(dirY)) dy = 0;
+                        dy = Math.max(0, Math.min(Math.abs(dy), TILE_SIZE)) * Math.sign(dirY);
+                    }
+
+                    tile.style.transform = `translate(${dx}px, ${dy}px)`;
+                }, { passive: false });
+
+                const finishDrag = (e) => {
+                    if (!dragging) return;
+                    dragging = false;
+
+                    const touch = e.changedTouches[0];
+                    const dx = touch.clientX - startX;
+                    const dy = touch.clientY - startY;
+
+                    const dirX = this.emptyPos.col - col;
+                    const dirY = this.emptyPos.row - row;
+
+                    const movedEnough =
+                        (dirX !== 0 && Math.abs(dx) >= THRESHOLD && Math.sign(dx) === Math.sign(dirX)) ||
+                        (dirY !== 0 && Math.abs(dy) >= THRESHOLD && Math.sign(dy) === Math.sign(dirY));
+
+                    // Resetuj vizuální polohu před případným překreslením
+                    tile.style.transform = '';
+                    tile.style.zIndex = '';
+                    tile.style.transition = '';
+
+                    if (movedEnough) {
+                        this.makeMove(row, col);
+                    }
+                };
+
+                tile.addEventListener('touchend', finishDrag, { passive: false });
+                tile.addEventListener('touchcancel', finishDrag, { passive: false });
             }
 
             isValidMove(row, col) {
